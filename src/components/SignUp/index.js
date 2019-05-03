@@ -1,8 +1,9 @@
-import React, { Component } from 'react';
-import { Link, withRouter } from 'react-router-dom';
-import { compose } from 'recompose';
-import {withFirebase} from '../Firebase'
-import * as ROUTES from '../../constants/routes';
+import React, { Component } from 'react'
+import { Link, withRouter } from 'react-router-dom'
+import { compose } from 'recompose'
+import { withFirebase } from '../Firebase'
+import * as ROUTES from '../../constants/routes'
+import * as ROLES from '../../constants/roles'
 
 const SignUpPage = () => (
   <div>
@@ -17,8 +18,12 @@ const INITIAL_STATE = {
     email: '',
     passwordOne: '',
     passwordTwo: '',
+    isAdmin: false,
     error: null,
 }
+
+const ERROR_CODE_ACCOUNT_EXISTS = 'auth/email-already-in-use'
+const ERROR_MSG_ACCOUNT_EXISTS = 'An account with this E-mail address already exists. Try to login from this account instead. If you think the account is already used from one of the social logins, try to sign-in with one of them. Afterward, associate your accounts on your personal account page.'
 
 
 class SignUpFormBase extends Component {
@@ -26,17 +31,35 @@ class SignUpFormBase extends Component {
     super(props)
     this.state = {...INITIAL_STATE}
   }
-
+  onChangeCheckBox = event => {
+    this.setState({[event.target.name] : event.target.checked})
+  }
   onSubmit = event => {
-    const { username, email, passwordOne } = this.state;
-
+    const { username, email, passwordOne, isAdmin } = this.state;
+    const roles = {}
+    if (isAdmin) {
+      roles[ROLES.ADMIN] = ROLES.ADMIN
+    }
     this.props.firebase
       .doCreateUserWithEmailAndPassword(email, passwordOne)
       .then(authUser => {
+        // Create a user in your Firebase realtime database
+        return this.props.firebase
+          .user(authUser.user.uid)
+          .set({
+            username,
+            email,
+            roles,
+          });
+      })
+      .then( () => {
         this.setState({ ...INITIAL_STATE });
         this.props.history.push(ROUTES.HOME);
       })
       .catch(error => {
+        if(error.code === ERROR_CODE_ACCOUNT_EXISTS) {
+          error.message = ERROR_MSG_ACCOUNT_EXISTS
+        }
         this.setState({ error });
       });
 
@@ -53,6 +76,7 @@ class SignUpFormBase extends Component {
         email,
         passwordOne,
         passwordTwo,
+        isAdmin,
         error,
       } = this.state
 
@@ -60,37 +84,83 @@ class SignUpFormBase extends Component {
 
     return (
       <form onSubmit={this.onSubmit}>
-        <input
-          name="username"
-          value={username}
-          onChange={this.onChange}
-          type="text"
-          placeholder="Full Name"
-        />
-        <input
-          name="email"
-          value={email}
-          onChange={this.onChange}
-          type="text"
-          placeholder="Email Address"
-        />
-        <input
-          name="passwordOne"
-          value={passwordOne}
-          onChange={this.onChange}
-          type="password"
-          placeholder="Password"
-        />
-        <input
-          name="passwordTwo"
-          value={passwordTwo}
-          onChange={this.onChange}
-          type="password"
-          placeholder="Confirm Password"
-        />
-        <button type="submit" disabled={isInvalid}>Sign Up</button>
+        <div className="field">
+            <p className="control has-icons-left has-icons-right">
+              <input
+                name="username"
+                value={username}
+                onChange={this.onChange}
+                type="text"
+                placeholder="Full Name"
+                className="input"
+                />
+              <span className="icon is-small is-left">
+                <i className="fas fa-user"></i>
+              </span>
+            </p>
+          </div>
 
-        {error && <p>{error.message}</p>}
+        <div className="field">
+          <p className="control has-icons-left has-icons-right">
+            <input
+              name="email"
+              value={email}
+              onChange={this.onChange}
+              type="text"
+              placeholder="Email Address"
+              className="input"
+            />
+            <span className="icon is-small is-left">
+              <i className="fas fa-envelope"></i>
+            </span>
+            <span className="icon is-small is-right">
+              <i className="fas fa-check"></i>
+            </span>
+          </p>
+        </div>
+        
+        
+        <div className="field">
+          <p className="control has-icons-left has-icons-right">
+            <input
+            name="passwordOne"
+            value={passwordOne}
+            onChange={this.onChange}
+            type="password"
+            placeholder="Password"
+            className="input"
+            />
+            <span className="icon is-small is-left">
+                <i className="fas fa-lock"></i>
+            </span>
+            </p>
+          </div>
+          <div className="field">
+          <p className="control has-icons-left has-icons-right">
+            <input
+              name="passwordTwo"
+              value={passwordTwo}
+              onChange={this.onChange}
+              type="password"
+              placeholder="Confirm Password"
+              className="input"
+            />
+        
+            <span className="icon is-small is-left">
+              <i className="fas fa-lock"></i>
+            </span>
+          </p>
+        </div>
+        <label>
+          Admin:
+          <input 
+            name="isAdmin"
+            type="checkbox"
+            checked={isAdmin}
+            onChange={this.onChangeCheckBox}
+          />
+        </label>
+        <button type="submit" disabled={isInvalid} className="button">Sign Up</button>
       </form>
     )
   }
