@@ -3,8 +3,9 @@ import React, { Component } from 'react';
 import { PasswordForgetForm } from '../PasswordForget';
 import PasswordChangeForm from '../PasswordChange';
 
-import {AuthUserContext ,withAuthorization} from '../Session';
-import {withFirebase} from '../Firebase'
+import {compose} from 'recompose'
+import {AuthUserContext ,withAuthorization, withEmailVerification} from '../Session';
+import {withFirebase} from '../Firebase';
 
 
 
@@ -179,4 +180,5 @@ const AccountPage = () => (
 );
 const LoginManagment = withFirebase(LoginManagmentBase)
 const condition = authUser => !!authUser;
-export default withAuthorization(condition)(AccountPage);
+
+export default compose(withAuthorization(condition), withEmailVerification)(AccountPage);
